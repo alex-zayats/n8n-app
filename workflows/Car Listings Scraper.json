@@ -1,0 +1,364 @@
+{
+  "name": "Car Listings Scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "custom",
+              "cronExpression": "* * 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "afde5149-3c5d-4e42-98d2-26298306968a",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.otomoto.pl/osobowe/uzywane/warszawa?search%5Bfilter_enum_damaged%5D=0&search%5Bfilter_float_price%3Afrom%5D=5000&search%5Bfilter_float_price%3Ato%5D=35000&search%5Blat%5D=52.23614&search%5Blon%5D=21.00817&search%5Border%5D=created_at_first%3Adesc",
+        "options": {}
+      },
+      "id": "1e2b5061-29d3-4ff9-b46a-a525baa959f6",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        256,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.all()[0];\nconst html = input.json.data;\n\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash;\n  }\n  return Math.abs(hash).toString(16);\n}\n\nconst regex = /<script[^>]*id=[\"']listing-json-ld[\"'][^>]*>([\\s\\S]*?)<\\/script>/i;\nconst match = regex.exec(html);\n\nconst listings = [];\n\nif (match && match[1]) {\n  try {\n    const jsonData = JSON.parse(match[1]);\n    \n    if (jsonData.mainEntity?.itemListElement) {\n      jsonData.mainEntity.itemListElement.forEach(item => {\n        if (item['@type'] === 'Offer' && item.itemOffered?.['@type'] === 'Car') {\n          const car = item.itemOffered;\n          const price = item.priceSpecification?.price || 0;\n          const mileage = car.mileageFromOdometer?.value || '';\n          const hashStr = `${car.name}${car.brand}${price}${mileage}`;\n          \n          listings.push({\n            hash: simpleHash(hashStr),\n            title: car.name,\n            brand: car.brand,\n            price: parseInt(price),\n            priceCurrency: item.priceSpecification?.priceCurrency || 'PLN',\n            fuelType: car.fuelType,\n            mileage: car.mileageFromOdometer?.value\n          });\n        }\n      });\n    }\n  } catch(e) {\n    // error handling\n  }\n}\n\nreturn listings.length > 0 ? listings.map(item => ({json: item})) : [{json: {}}];"
+      },
+      "id": "7ee455d3-a5ef-4019-8ce4-933f463cc77d",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -96
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "=car_listings",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "hash",
+              "keyValue": "={{ $json.hash }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "hash": "={{ $json.hash }}",
+            "title": "={{ $json.title }}",
+            "brand": "={{ $json.brand }}",
+            "price": "={{ $json.price }}",
+            "priceCurrency": "={{ $json.priceCurrency }}",
+            "fuelType": "={{ $json.fuelType }}",
+            "mileage": "={{ $json.mileage }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "hash",
+              "displayName": "hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "brand",
+              "displayName": "brand",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "price",
+              "displayName": "price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "priceCurrency",
+              "displayName": "priceCurrency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "fuelType",
+              "displayName": "fuelType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "mileage",
+              "displayName": "mileage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        544,
+        -96
+      ],
+      "id": "be81a743-f16d-4abb-b73b-5c21e5dc3ef9",
+      "name": "Upsert row(s)"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "=car_listings",
+          "mode": "name"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        80,
+        0
+      ],
+      "id": "fe74f4a0-2230-4e6e-a6c9-66901c5de7f6",
+      "name": "Get row(s)",
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "hash",
+              "field2": "hash"
+            }
+          ]
+        },
+        "resolve": "mix",
+        "preferWhenMix": "input2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.compareDatasets",
+      "typeVersion": 2.3,
+      "position": [
+        720,
+        240
+      ],
+      "id": "e3012e56-2339-4eba-a9f1-8a29e77e4f55",
+      "name": "Compare Datasets"
+    },
+    {
+      "parameters": {
+        "chatId": "2117047077",
+        "text": "={{ $now.format('yyyy-MM-dd HH:MM:ss') }} No updates!",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        992,
+        368
+      ],
+      "id": "5eb56beb-43d4-49f1-835a-e5dca054239d",
+      "name": "Send non-update message",
+      "webhookId": "94928652-cb91-4454-a80d-46fd3e79be80",
+      "executeOnce": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "NdhKUnrO6cx0XR25",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "2117047077",
+        "text": "={{ $now.format('yyyy-MM-dd HH:MM:ss') }} There are {{ $input.all().length }} new autos!",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        992,
+        176
+      ],
+      "id": "fc9de230-8016-4190-9a4f-794d3c7144fe",
+      "name": "Send a update message",
+      "webhookId": "94928652-cb91-4454-a80d-46fd3e79be80",
+      "executeOnce": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "NdhKUnrO6cx0XR25",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Upsert row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert row(s)": {
+      "main": [
+        [
+          {
+            "node": "Compare Datasets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Compare Datasets",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare Datasets": {
+      "main": [
+        [
+          {
+            "node": "Send a update message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send non-update message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send non-update message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Send a update message": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2b9c5976-373d-4c2a-9a59-25a5ec296ffd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "954b691f09574dbde85b0c89b80d00052c7a3e5257530b7d3a04fba9c8451099"
+  },
+  "id": "UObmxfvH4llgsmN1",
+  "tags": []
+}
