@@ -7,7 +7,7 @@
           "item": [
             {
               "mode": "custom",
-              "cronExpression": "* 10 * * * *"
+              "cronExpression": "* * 2 * * *"
             }
           ]
         }
