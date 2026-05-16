@@ -7,7 +7,7 @@
           "item": [
             {
               "mode": "custom",
-              "cronExpression": "* * 2 * * *"
+              "cronExpression": "* 10 * * * *"
             }
           ]
         }
@@ -187,29 +187,6 @@
     },
     {
       "parameters": {
-        "mergeByFields": {
-          "values": [
-            {
-              "field1": "hash",
-              "field2": "hash"
-            }
-          ]
-        },
-        "resolve": "mix",
-        "preferWhenMix": "input2",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.compareDatasets",
-      "typeVersion": 2.3,
-      "position": [
-        720,
-        240
-      ],
-      "id": "e3012e56-2339-4eba-a9f1-8a29e77e4f55",
-      "name": "Compare Datasets"
-    },
-    {
-      "parameters": {
         "chatId": "2117047077",
         "text": "={{ $now.format('yyyy-MM-dd HH:MM:ss') }} No updates!",
         "additionalFields": {}
@@ -217,8 +194,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        992,
-        368
+        1072,
+        -112
       ],
       "id": "5eb56beb-43d4-49f1-835a-e5dca054239d",
       "name": "Send non-update message",
@@ -240,8 +217,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        992,
-        176
+        1072,
+        80
       ],
       "id": "fc9de230-8016-4190-9a4f-794d3c7144fe",
       "name": "Send a update message",
@@ -253,6 +230,56 @@
           "name": "Telegram account"
         }
       }
+    },
+    {
+      "parameters": {
+        "mode": "combineBySql",
+        "query": "SELECT * FROM input1\nWHERE hash NOT IN (SELECT hash FROM input2)",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        752,
+        -16
+      ],
+      "id": "4c6ebc59-7013-4303-bebe-12eb571bec83",
+      "name": "Merge",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "63f7a01d-ae91-45ca-a197-2582a575992a",
+              "leftValue": "={{ $input.item.json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        928,
+        -16
+      ],
+      "id": "c9c5cd6a-d4b8-425b-801b-41cede4bfb01",
+      "name": "If"
     }
   ],
   "pinData": {},
@@ -294,7 +321,7 @@
       "main": [
         [
           {
-            "node": "Compare Datasets",
+            "node": "Merge",
             "type": "main",
             "index": 0
           }
@@ -305,47 +332,50 @@
       "main": [
         [
           {
-            "node": "Compare Datasets",
+            "node": "HTTP Request",
             "type": "main",
-            "index": 1
+            "index": 0
           },
           {
-            "node": "HTTP Request",
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Send a update message": {
+      "main": [
+        []
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "If",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Compare Datasets": {
+    "If": {
       "main": [
+        [
+          {
+            "node": "Send non-update message",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Send a update message",
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Send non-update message",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Send non-update message",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        []
-      ]
-    },
-    "Send a update message": {
-      "main": [
-        []
+        ]
       ]
     }
   },
@@ -354,7 +384,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "2b9c5976-373d-4c2a-9a59-25a5ec296ffd",
+  "versionId": "bd4f28f8-0f8d-4271-9315-7ff617edb9ed",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "954b691f09574dbde85b0c89b80d00052c7a3e5257530b7d3a04fba9c8451099"
