@@ -6,8 +6,6 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - DB_TYPE=sqlite
-      - DB_SQLITE_PATH=/home/node/.n8n/database.db
       - N8N_HOST=${N8N_HOST:-localhost}
       - N8N_PORT=5678
       - NODE_ENV=production

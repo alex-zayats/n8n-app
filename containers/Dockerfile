@@ -1,14 +1,5 @@
 FROM n8nio/n8n:latest
 
-# Switch to root to install packages
-USER root
-
-# Install sqlite3 (Alpine Linux)
-RUN apk add --no-cache sqlite
-
-# Switch back to node user
-USER node
-
 # Default port
 EXPOSE 5678
 
